@@ -24,7 +24,7 @@ struct kocsi ///vonathoz csatlakoztatható kocsi
 {
     string azonosito;
     int kapacitas = 0;
-    string kezdo_allomas;
+    string allomas;
     list<termek> tartalma; ///mi van belepakolva
 };
 
@@ -123,7 +123,7 @@ int main()
             cout << k.kapacitas << '\t';
 
             getline(infile,kezd);
-            k.kezdo_allomas = kezd;
+            k.allomas = kezd;
             cout << kezd << endl;
 
         }
