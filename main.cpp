@@ -99,8 +99,7 @@ void lecsatol(vonat &v, kocsi &k)
     }
 }
 
-
-int main()
+void beolvas(vector<termek> &termekek, vector<kocsi> &kocsik, vector<vonat> &vonatok)
 {
     kocsi k;
     vonat v;
@@ -116,33 +115,23 @@ int main()
         {
             getline(infile,azon,' ');
             k.azonosito = azon;
-            cout << azon << '\t';
 
             getline(infile,kap,' ');
             k.kapacitas = stoi(kap);
-            cout << k.kapacitas << '\t';
 
             getline(infile,kezd);
             k.allomas = kezd;
-            cout << kezd << endl;
+
+            kocsik.push_back(k);
 
         }
         infile.close();
-        cout << endl;
     }
 
     else
     {
         cout << "a kocsikat tartalmazo fajlt nem sikerult megnyitni";
-
     }
-
-
-
-
-
-
-
 
     string i, forr, cel, mer;
 
@@ -153,23 +142,20 @@ int main()
         {
             getline(infile2,i,' ');
             t.id = i;
-            cout << i << '\t';
 
             getline(infile2,forr,' ');
             t.forrashely = forr;
-            cout << forr << '\t';
 
             getline(infile2,cel,' ');
             t.celhely = cel;
-            cout << cel << '\t';
 
             getline(infile2,mer);
             t.meret = stoi(mer);
-            cout << t.meret << endl;
+
+            termekek.push_back(t);
 
         }
-        infile.close();
-        cout << endl;
+        infile2.close();
     }
 
     else
@@ -178,14 +164,54 @@ int main()
 
     }
 
+    string kapacitas,ido,allomas;
+    int ido_szammal;
+    map<string,int> all;
+
+    ifstream infile3("menetrend.txt");
+    if (infile3.is_open())
+    {
+        while(infile3.good())
+        {
+            getline(infile3,v.id, ' ');
+            getline(infile3,kapacitas);
+            v.kapacitas = stoi(kapacitas);
+            while(getline(infile3,allomas, ' ')) ///addig olvassa egy vonat menetrendjét, amíg nincs üres sor (utána a következő jön)
+            {
+                getline(infile3, ido, ' ');
+                ido_szammal = stoi(ido);
+                v.allomasok[allomas]=ido_szammal;
+            }
+            vonatok.push_back(v);
+
+        }
+        infile3.close();
+    }
+
+    else
+    {
+        cout << "az arukat tartalmazo fajlt nem sikerult megnyitni";
+
+    }
+}
+
+
+int main()
+{
+    vector<termek> termekek;
+    vector<kocsi> kocsik;
+    vector<vonat> vonatok;
+
+    beolvas(termekek, kocsik, vonatok);
+
     int mennyiseg=0; ///mennyi cuccot akarunk bepakolni
-    pakol(k,t,mennyiseg); ///kell egy kocsi, egy termék és hogy mennyit rakjunk bele
+    //pakol(k,t,mennyiseg); ///kell egy kocsi, egy termék és hogy mennyit rakjunk bele
 
-    kipakol(k,t,mennyiseg);
+    //kipakol(k,t,mennyiseg);
 
-    csatol(v, k);
+    //csatol(v, k);
 
-    lecsatol(v,k);
+    //lecsatol(v,k);
 
     return 0;
 }
