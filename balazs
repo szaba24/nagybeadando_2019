@@ -21,37 +21,50 @@ struct termek
     string hely;
     int meret;
     bool bepakolva = false;
+    bool megerkezett = false;
 };
 
 struct kocsi ///vonathoz csatlakoztatható kocsi
 {
     string azonosito;
+    bool felcsatolva = false;
     int kapacitas = 0;
     string allomas;
-    string kapcsolt;
     vector<termek> tartalma; ///mi van belepakolva
+};
+
+struct Menetrend
+{
+    string nev;
+    int ido;
 };
 
 struct vonat ///vonat hova megy
 {
+    int maxido = 0;
     string id;
     int kapacitas;
     string allomas; //kene egy kulon menetrend struct ami egy fv. alapjan valtoztatja az allomast a menetrend szerint
-    unordered_map<string,vector<int>> allomasok; /// allomas neve es hogy mikor van ott
-    list<kocsi> csatlakoztatott_kocsik;
-    bool statusz = true; //a vonat eppen a celhelyre tart(true), vagy vissza a kezdoallomasra (false).
+//   unordered_map<string,vector<int>> allomasok; /// allomas neve es hogy mikor van ott
+    vector<Menetrend> menetrend;
+    vector<kocsi> csatlakoztatott_kocsik;
 };
 
-void pakol(kocsi &k, termek &t)
+
+void felpakol(kocsi &k, termek &t, int ido)
 {
     int maradek; // fullra pakolja amig tudja, aztan ennyi marad ott
-    if(t.meret<=k.kapacitas)
+    if(t.meret<=k.kapacitas && k.felcsatolva == false && t.meret != 0)
     {
         t.bepakolva = true;
         k.tartalma.push_back(t);
         k.kapacitas-=t.meret;
+        for(size_t j = 0; j < k.tartalma.size(); j++)
+        {
+            cout << ido << ": " << "Bepakolva: " << k.allomas << "-helyen " << k.azonosito << "-kocsiba " << k.tartalma[j].id << ": " << k.tartalma[j].meret << endl;
+        }
     }
-    else
+    else if(t.meret != 0 && k.kapacitas != 0 && k.felcsatolva == false)
     {
         //meg kene maradnia a maradeknak
         maradek = t.meret - k.kapacitas;
@@ -61,23 +74,44 @@ void pakol(kocsi &k, termek &t)
         k.kapacitas = 0;
         t.meret = maradek;
         t.bepakolva = false;
+        for(size_t j = 0; j < k.tartalma.size(); j++)
+        {
+            cout << ido << ": " << "Bepakolva: " << k.allomas << "-helyen " << k.azonosito << "-kocsiba " << k.tartalma[j].id << ": " << k.tartalma[j].meret << endl;
+        }
     }
-    for(size_t j = 0; j < k.tartalma.size(); j++)
-    {
-        cout << "Bepakolva: " << k.tartalma[j].id << ": " << k.tartalma[j].meret << endl;
-    }
-
 }
-void mittegyek(vector<kocsi> &kocsik,vector<termek> &termekek,vector<vonat> &vonatok, int &ido)
+
+void felcsatol(vonat &v, kocsi &k, int ido)
+{
+    v.kapacitas--;
+    k.felcsatolva = true;
+    v.csatlakoztatott_kocsik.push_back(k);
+    cout << ido << ": " << "Csatlakoztatva: " << v.allomas << " megalloban " << v.id << "-vonat " << k.azonosito<< "-kocsi." << endl;
+}
+
+void lecsatol(vonat &v, kocsi &k, vector<kocsi> &kocsik, int ido)
+{
+    kocsi k2;
+    v.kapacitas++;
+    k2.felcsatolva = false;
+    k2.allomas = v.allomas;
+    k2.azonosito = k.azonosito;
+    k2.kapacitas = k.kapacitas;
+    k2.tartalma = k.tartalma;
+    kocsik.push_back(k2);
+    cout << ido << ": " << "Lecsatolva: " << v.id << "-vonatrol " << k2.azonosito << "-kocsi " << k2.allomas << " helyre." << endl;
+}
+
+void mittegyek(vector<kocsi> &kocsik,vector<termek> &termekek,vector<vonat> &vonatok, int &ido, bool &kesz)
 {
     //bepakolas
     for(size_t i = 0; i < kocsik.size(); i++)
     {
         for(size_t j = 0; j < termekek.size(); j++)
         {
-            if(kocsik[i].allomas == termekek[j].hely)
+            if((kocsik[i].allomas == termekek[j].hely && kocsik[i].felcsatolva == false) && termekek[j].meret != 0)
             {
-                pakol(kocsik[i],termekek[j]);
+                felpakol(kocsik[i],termekek[j], ido);
             }
         }
     }
@@ -86,8 +120,69 @@ void mittegyek(vector<kocsi> &kocsik,vector<termek> &termekek,vector<vonat> &von
     {
         for(size_t j = 0; j < kocsik.size(); j++)
         {
-
+            if(vonatok[i].allomas == kocsik[j].allomas && kocsik[j].felcsatolva == false)
+            {
+                felcsatol(vonatok[i],kocsik[j], ido);
+            }
         }
+    }
+    /*   for(size_t i = 0; i < vonatok.size(); i++)
+       {
+           cout << ido << ": " << "Csatlakoztatott: ";
+           for(size_t j = 0; j < vonatok[i].csatlakoztatott_kocsik.size(); j++)
+           {
+               cout << vonatok[i].id << ": " << vonatok[i].csatlakoztatott_kocsik[j].azonosito << ' ';
+           }
+           cout << endl;
+       } */
+    //lecsatol
+    for(size_t i = 0; i < vonatok.size(); i++)
+    {
+        for(size_t j = 0; j < vonatok[i].csatlakoztatott_kocsik.size(); j++)
+        {
+            for(size_t k = 0; k < vonatok[i].csatlakoztatott_kocsik[j].tartalma.size(); k++)
+            {
+                if(vonatok[i].csatlakoztatott_kocsik[j].tartalma[k].celhely == vonatok[i].allomas && vonatok[i].csatlakoztatott_kocsik[j].tartalma.size() != 0)
+                {
+                    lecsatol(vonatok[i],vonatok[i].csatlakoztatott_kocsik[j],kocsik, ido);
+                    vonatok[i].csatlakoztatott_kocsik.erase(vonatok[i].csatlakoztatott_kocsik.begin()+j);
+                }
+            }
+        }
+    }
+    //kipakol: ezt is függvénybe kéne kirakni
+    termek t;
+    for(size_t i = 0; i < kocsik.size(); i++)
+    {
+        for(size_t j = 0; j < kocsik[i].tartalma.size(); j++)
+        {
+            if(kocsik[i].tartalma[j].celhely == kocsik[i].allomas)
+            {
+                t.hely = kocsik[i].allomas;
+                t.id = kocsik[i].tartalma[j].id;
+                t.meret = kocsik[i].tartalma[j].meret;
+                t.forrashely = kocsik[i].tartalma[j].forrashely;
+                t.celhely = kocsik[i].tartalma[j].celhely;
+                t.bepakolva = false;
+                t.megerkezett = true;
+                cout << ido << ": " << "Kipakolva: " << kocsik[i].azonosito << " kocsibol: ";
+                cout << t.id << "-bol " << t.meret << " db " << t.hely<< "-re " << t.celhely << " celhoz." << endl;
+                termekek.push_back(t);
+                kocsik[i].tartalma.erase(kocsik[i].tartalma.begin()+j);
+            }
+        }
+    }
+    int figyelo = 0;
+    for(size_t i = 0; i < termekek.size(); i++)
+    {
+        if(termekek[i].megerkezett == true)
+        {
+            figyelo++;
+        }
+    }
+    if(figyelo == termekek.size())
+    {
+        kesz = true;
     }
 }
 
@@ -111,27 +206,26 @@ void mittegyek(vector<kocsi> &kocsik,vector<termek> &termekek,vector<vonat> &von
 
 }*/
 
-void csatol(vonat &v, kocsi &k)
-{
-    if (v.csatlakoztatott_kocsik.size() < v.kapacitas)
-    {
-        v.csatlakoztatott_kocsik.push_back(k);
-    }
-    else
-    {
-        cout << "Nem lehet tobb kocsit csatlakoztatni! :(" << endl;
-    }
-}
 
-void lecsatol(vonat &v, kocsi &k)
+void idolep(int &ido, vector<vonat> &vonatok)
 {
-    list<kocsi>::iterator it = v.csatlakoztatott_kocsik.begin();
-    while(it != v.csatlakoztatott_kocsik.end())
+    ido++;
+    for(size_t i = 0; i < vonatok.size(); i++)
     {
-        if(it->azonosito == k.azonosito)
+        //  int legkesobb = max_element(vonatok[i].menetrend.ido.begin(), vonatok[i].menetrend.ido.end());
+        if(ido > vonatok[i].maxido)
         {
-            v.csatlakoztatott_kocsik.erase(it);
-            break;
+            for(size_t j = 0; j < vonatok[i].menetrend.size(); j++)
+            {
+                vonatok[i].menetrend[j].ido +=  vonatok[i].maxido;
+            }
+        }
+        for(size_t j = 0; j < vonatok[i].menetrend.size(); j++)
+        {
+            if(ido == vonatok[i].menetrend[j].ido)
+            {
+                vonatok[i].allomas = vonatok[i].menetrend[j].nev;
+            }
         }
     }
 }
@@ -141,6 +235,7 @@ void beolvas(vector<termek> &termekek, vector<kocsi> &kocsik, vector<vonat> &von
     kocsi k;
     vonat v;
     termek t;
+    Menetrend m;
 
 
     string azon, kezd, kap;
@@ -204,7 +299,6 @@ void beolvas(vector<termek> &termekek, vector<kocsi> &kocsik, vector<vonat> &von
     }
 
     string kapacitas,ido,allomas;
-    int ido_szammal;
     map<string,int> all;
 
     ifstream infile3("menetrend.txt");
@@ -212,52 +306,93 @@ void beolvas(vector<termek> &termekek, vector<kocsi> &kocsik, vector<vonat> &von
     {
         while(infile3.good())
         {
-            v.allomasok.clear(); //ha nem tisztitja ki a v-t az elozo vonat idopontjait is belerakja
+            /*  v.allomasok.clear(); //ha nem tisztitja ki a v-t az elozo vonat idopontjait is belerakja
+              getline(infile3,v.id, ' ');
+              cout << v.id << " ";
+              getline(infile3,kapacitas);
+              cout << kapacitas << endl;
+              v.kapacitas = stoi(kapacitas);
+              getline(infile3,allomas, ' ');
+              string elsoallomas = allomas;
+              getline(infile3, ido);
+              cout << allomas << " " << ido << endl;
+              ido_szammal = stoi(ido);
+              v.allomasok[allomas].push_back(ido_szammal);
+              do ///addig olvassa egy vonat menetrendjét, amíg nincs üres sor (utána a következõ jön)
+              {
+                  getline(infile3,allomas, ' ');
+                  cout << allomas << " ";
+                  getline(infile3, ido);
+                  cout << ido << endl;
+                  ido_szammal = stoi(ido);
+                  v.allomasok[allomas].push_back(ido_szammal);
+              }
+              while(allomas!=elsoallomas); //akkor hagyja abba a beolvasast, amikor visszaert a kezdopontba
+              vonatok.push_back(v); */
+            v.menetrend.clear();
             getline(infile3,v.id, ' ');
-            cout << v.id << " ";
+           // cout << v.id << " ";
             getline(infile3,kapacitas);
-            cout << kapacitas << endl;
+           // cout << kapacitas << endl;
             v.kapacitas = stoi(kapacitas);
             getline(infile3,allomas, ' ');
-            string elsoallomas = allomas;
+            m.nev = allomas;
+            v.allomas = allomas;
             getline(infile3, ido);
-            cout << allomas << " " << ido << endl;
-            ido_szammal = stoi(ido);
-            v.allomasok[allomas].push_back(ido_szammal);
-            do ///addig olvassa egy vonat menetrendjét, amíg nincs üres sor (utána a következő jön)
+          //  cout << allomas << " " << ido << endl;
+            m.ido = stoi(ido);
+            v.menetrend.push_back(m);
+            do
             {
                 getline(infile3,allomas, ' ');
-                cout << allomas << " ";
+                m.nev = allomas;
+             //   cout << allomas << " ";
                 getline(infile3, ido);
-                cout << ido << endl;
-                ido_szammal = stoi(ido);
-                v.allomasok[allomas].push_back(ido_szammal);
+            //    cout << ido << endl;
+                m.ido = stoi(ido);
+                if(m.ido>v.maxido)
+                {
+                    v.maxido = m.ido;
+                }
+                v.menetrend.push_back(m);
             }
-            while(allomas!=elsoallomas); //akkor hagyja abba a beolvasast, amikor visszaert a kezdopontba
+            while(allomas != v.allomas);
             vonatok.push_back(v);
-
         }
         infile3.close();
-        cout << endl << "Tomb:" << endl; //innentol az ellenorzo kiiratas
-        for(int i = 0; i < vonatok.size(); i++)
-        {
-            cout << vonatok[i].id << endl;
-            for(pair<string, vector<int>> p: vonatok[i].allomasok)
-            {
-                cout << p.first << " ";
-                for(v : p.second)
-                {
-                    cout << v << " ";
-                }
-                cout << endl;
-            }
-        }
+        /*  cout << endl << "Tomb:" << endl; //innentol az ellenorzo kiiratas
+          for(int i = 0; i < vonatok.size(); i++)
+          {
+              cout << vonatok[i].id << endl;
+              for(pair<string, vector<int>> p: vonatok[i].allomasok)
+              {
+                  cout << p.first << " ";
+                  for(v : p.second)
+                  {
+                      cout << v << " ";
+                  }
+                  cout << endl;
+              }
+          } */
     }
 
     else
     {
         cout << "az arukat tartalmazo fajlt nem sikerult megnyitni";
 
+    }
+}
+
+void tesztkiir(vector<termek> &termekek, vector<kocsi> &kocsik, vector<vonat> &vonatok)
+{
+    for(size_t i = 0; i < vonatok.size(); i++)
+    {
+        cout << vonatok[i].id << ": " << vonatok[i].kapacitas << endl;
+        for(size_t j = 0; j < vonatok[i].menetrend.size(); j++)
+        {
+            cout << vonatok[i].menetrend[j].nev << ' ' << vonatok[i].menetrend[j].ido << endl;
+        }
+        cout << "Max ido: " << vonatok[i].maxido << endl;
     }
 }
 
@@ -269,7 +404,15 @@ int main()
     int ido = 0;
 
     beolvas(termekek, kocsik, vonatok);
-    mittegyek(kocsik, termekek, vonatok, ido);
+  //  tesztkiir(termekek, kocsik, vonatok);
+    //kell egy ciklus ami addig csinalja mig nincs minden a helyen
+    bool kesz = false;
+    while(!kesz)
+    {
+        mittegyek(kocsik, termekek, vonatok, ido, kesz);
+        idolep(ido, vonatok); // meg kell irni pl. hogy amikor tulmegy a menetrendjen az ido, akkor eltolodjon a menetrend ido-vel
+    }
+
 
     //int mennyiseg=0; ///mennyi cuccot akarunk bepakolni
     //pakol(k,t,mennyiseg); ///kell egy kocsi, egy termék és hogy mennyit rakjunk bele
